@@ -30,21 +30,24 @@ const columns = [
     { field: 'fullTime', title: 'Full Time', width: 150 }
 ];
 
-class App extends React.Component {
-    state = {
+const App = (props) => {
+
+
+  const [state, setState] = React.useState({
         data: [ ...dataTree ],
-        expanded: [ 1, 2, 32 ],
+        expanded: [],
         inEdit: [ ]
-    };
+  })
 
-    addChild = (dataItem) => {
-      const newRecord = this.createNewItem();
+  const addChild = (dataItem) => {
+      const newRecord = createNewItem();
 
-      this.setState({
-          inEdit: [ ...this.state.inEdit, newRecord ],
-          expanded: [ ...this.state.expanded, dataItem.id ],
+      setState({
+          ...state,
+          inEdit: [ ...state.inEdit, newRecord ],
+          expanded: [ ...state.expanded, dataItem.id ],
           data: modifySubItems(
-              this.state.data,
+              state.data,
               subItemsField,
               item => item.id === dataItem.id,
               subItems => [ newRecord, ...subItems ]
@@ -52,46 +55,58 @@ class App extends React.Component {
       });
     }
 
-    enterEdit = (dataItem) => {
-        this.setState({
-            inEdit: [ ...this.state.inEdit, extendDataItem(dataItem, subItemsField) ]
+    const enterEdit = (dataItem) => {
+        setState({
+          ...state,
+          inEdit: [ ...state.inEdit, extendDataItem(dataItem, subItemsField) ]
         });
     }
 
-    save = (dataItem) => {
+    const save = (dataItem) => {
         const { isNew, inEdit, ...itemToSave } = dataItem;
-        this.setState({
-            data: mapTree(this.state.data, subItemsField, item => item.id === itemToSave.id ? itemToSave : item),
-            inEdit: this.state.inEdit.filter(i => i.id !== itemToSave.id)
+
+        setState({
+            ...state,
+            data: mapTree(state.data, subItemsField, item => item.id === itemToSave.id ? itemToSave : item),
+            inEdit: state.inEdit.filter(i => i.id !== itemToSave.id)
         });
     }
 
-    cancel = (editedItem) => {
-        const { inEdit, data } = this.state;
+    const cancel = (editedItem) => {
+        const { inEdit, data } = state;
         if (editedItem.isNew) {
-            return this.remove(editedItem);
+            return remove(editedItem);
         }
 
-        this.setState({
+        setState({
+            ...state,
             data: mapTree(data, subItemsField,
-                item => item.id === editedItem.id ? inEdit.find(i => i.id === item.id) : item),
+            item => item.id === editedItem.id ? inEdit.find(i => i.id === item.id) : item),
             inEdit: inEdit.filter(i => i.id !== editedItem.id)
         });
     }
 
-    remove = (dataItem) => {
+    const remove = (dataItem) => {
         this.setState({
             data: removeItems(this.state.data, subItemsField, i => i.id === dataItem.id),
-            inEdit: this.state.inEdit.filter(i => i.id !== dataItem.id)
+            inEdit: state.inEdit.filter(i => i.id !== dataItem.id)
         });
     }
 
-    CommandCell = MyCommandCell(this.enterEdit, this.remove, this.save, this.cancel, this.addChild, editField);
+    const CommandCell = MyCommandCell(
+      enterEdit,
+      remove,
+      save,
+      cancel,
+      addChild,
+      editField
+    );
 
-    onItemChange = (event) => {
-      this.setState({
+    const onItemChange = (event) => {
+      setState({
+          ...state,
           data: mapTree(
-              this.state.data,
+              state.data,
               subItemsField,
               item => item.id === event.dataItem.id ?
                   extendDataItem(item, subItemsField, { [event.field]: event.value }) : item
@@ -99,43 +114,45 @@ class App extends React.Component {
       });
     }
 
-    createNewItem = () => {
+    const createNewItem = () => {
         const timestamp = new Date().getTime();
         return { id: timestamp, isNew: true };
     }
 
-    onExpandChange = (e) => {
-        this.setState({
+    const onExpandChange = (e) => {
+        setState({
+            ...state,
             expanded: e.value ?
-                this.state.expanded.filter(id => id !== e.dataItem.id) :
-                [ ...this.state.expanded, e.dataItem.id ]
+                state.expanded.filter(id => id !== e.dataItem.id) :
+                [ ...state.expanded, e.dataItem.id ]
         });
     }
 
-    render() {
-        const { data, expanded, inEdit } = this.state;
-        const callback = item =>
-             extendDataItem(item, subItemsField, {
-                [expandField]: expanded.includes(item.id),
-                [editField]: Boolean(inEdit.find(i => i.id === item.id))
-            });
 
-        return (
-            <TreeList
-                style={{ maxHeight: '510px', overflow: 'auto' }}
-                data={mapTree(data, subItemsField, callback)}
-                editField={editField}
-                expandField={expandField}
-                subItemsField={subItemsField}
-                onItemChange={this.onItemChange}
-                onExpandChange={this.onExpandChange}
-                columns={[
-                  { cell: this.CommandCell, width: 360 },
-                  ...columns
-                ]}
-            />
-        );
-    }
+  const { data, expanded, inEdit } = state;
+
+  const callback = item =>
+        extendDataItem(item, subItemsField, {
+          [expandField]: expanded.includes(item.id),
+          [editField]: Boolean(inEdit.find(i => i.id === item.id))
+      });
+
+
+  return (
+      <TreeList
+          style={{ maxHeight: '510px', overflow: 'auto' }}
+          data={mapTree(data, subItemsField, callback)}
+          editField={editField}
+          expandField={expandField}
+          subItemsField={subItemsField}
+          onItemChange={onItemChange}
+          onExpandChange={onExpandChange}
+          columns={[
+            { cell: CommandCell, width: 360 },
+            ...columns
+          ]}
+      />
+  );
 }
 
 ReactDOM.render(
